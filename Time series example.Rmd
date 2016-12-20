@@ -1,0 +1,78 @@
+---
+title: "Time Series Introduction"
+author: "Davis Townsend"
+date: "December 20, 2016"
+output: html_document
+---
+
+
+```{r}
+ data(AirPassengers)
+#tells you that this data is in time series format
+ class(AirPassengers)
+ #find what year data starts in
+ start(AirPassengers)
+ #and when it ends
+ end(AirPassengers)
+ #find the cycle of the time series to be 12 months via:
+ frequency(AirPassengers)
+ 
+ summary(AirPassengers)
+
+```
+
+plot the time series and fit a line to it
+```{r}
+plot(AirPassengers)
+abline(reg=lm(AirPassengers~time(AirPassengers)))
+```
+
+Here are other possible time series operations
+```{r}
+#prints the cycle across years
+cycle(AirPassengers)
+#aggregates cycles and displays year on year trend
+plot(aggregate(AirPassengers,FUN=mean))
+#boxplot over years gives sense of seasonal affect
+boxplot(AirPassengers~cycle(AirPassengers))
+
+```
+
+```{r}
+#library for time series models
+library(tseries)
+#take log of data to remove unequal variance, and we take difference to address the trend component (growth of passengers over time)
+adf.test(diff(log(AirPassengers)), alternative="stationary", k=0)
+#look at p-value, see that series is stationary enough
+```
+
+Next we need to find the right parameters for the ARIMA model. We already know that d=1 since it took 1 difference to make the series stationary but we need to find p and q still.
+
+We can find this by looking at the correlation ACF and PACF plots
+```{r}
+#plot acf
+acf(log(AirPassengers))
+```
+
+Clearly, the decay of ACF chart is very slow, which means that the population is not stationary. We have already discussed above that we now intend to regress on the difference of logs rather than log directly. Let's see how ACF and PACF curve come out after regressing on the difference.
+
+```{r}
+#acf plot
+acf(diff(log(AirPassengers)))
+#pacf plot
+pacf(diff(log(AirPassengers)))
+```
+
+Clearly, ACF plot cuts off after the first lag. Hence, we understood that value of p should be 0 as the ACF is the curve getting a cut off. While value of q should be 1 or 2. After a few iterations, we found that (0,1,1) as (p,d,q) comes out to be the combination with least AIC and BIC.
+
+Let's fit an ARIMA model and predict the future 10 years. Also, we will try fitting in a seasonal component in the ARIMA formulation. Then, we will visualize the prediction along with the training data. You can use the following code to do the same :
+```{r}
+(fit <- arima(log(AirPassengers), c(0, 1, 1),seasonal = list(order = c(0, 1, 1), period = 12)))
+pred <- predict(fit, n.ahead = 10*12)
+ts.plot(AirPassengers,2.718^pred$pred, log = "y", lty = c(1,3))
+
+```
+
+
+
+
